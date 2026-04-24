@@ -17,6 +17,7 @@ const PHOTOS = [
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [visible, setVisible] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const lastY = useRef(0);
   useEffect(() => {
     const h = () => {
@@ -28,20 +29,29 @@ function Nav() {
     window.addEventListener('scroll', h, { passive: true });
     return () => window.removeEventListener('scroll', h);
   }, []);
+  const closeMenu = () => setMenuOpen(false);
   return (
     <nav style={{
       boxShadow: scrolled ? '0 2px 20px rgba(0,0,0,0.08)' : 'none',
       transform: visible ? 'translateY(0)' : 'translateY(-100%)',
       transition: 'transform 0.35s ease, box-shadow 0.3s'
     }}>
-      <a className="nav-logo" href="#hero">Beauté <span>Signée S</span></a>
-      <ul className="nav-links">
-        <li><a href="#services">Services</a></li>
-        <li><a href="#realisations">Réalisations</a></li>
-        <li><a href="#tarifs">Tarifs</a></li>
-        <li><a href="#fidelite">Fidélité</a></li>
-        <li><a href="#reglement">Règlement</a></li>
-        <li><a href="#contact" className="nav-cta">Contact</a></li>
+      <a className="nav-logo" href="#hero" onClick={closeMenu}>Beauté <span>Signée S</span></a>
+      <button
+        className={`nav-burger ${menuOpen ? 'open' : ''}`}
+        onClick={() => setMenuOpen(o => !o)}
+        aria-label="Menu"
+        aria-expanded={menuOpen}
+      >
+        <span /><span /><span />
+      </button>
+      <ul className={`nav-links ${menuOpen ? 'nav-links--open' : ''}`}>
+        <li><a href="#services" onClick={closeMenu}>Services</a></li>
+        <li><a href="#realisations" onClick={closeMenu}>Réalisations</a></li>
+        <li><a href="#tarifs" onClick={closeMenu}>Tarifs</a></li>
+        <li><a href="#fidelite" onClick={closeMenu}>Fidélité</a></li>
+        <li><a href="#reglement" onClick={closeMenu}>Règlement</a></li>
+        <li><a href="#contact" className="nav-cta" onClick={closeMenu}>Contact</a></li>
       </ul>
     </nav>
   );
@@ -167,14 +177,38 @@ function Lightbox({ photoIdx, onClose, onPrev, onNext }: {
 function Carousel() {
   const [idx, setIdx] = useState(0);
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const total = PHOTOS.length;
-  const visible = 3;
-  const maxIdx = total - visible;
+  const touchStartX = useRef(0);
+  const isDragging = useRef(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', check, { passive: true });
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  const cardWidth = isMobile ? 260 : 320;
+  const visibleCount = isMobile ? 1 : 3;
+  const maxIdx = total - visibleCount;
 
   const prev = () => setIdx(i => Math.max(0, i - 1));
   const next = () => setIdx(i => Math.min(maxIdx, i + 1));
+  const offset = idx * (cardWidth + 16);
 
-  const offset = idx * (320 + 16);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    isDragging.current = true;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) next();
+      else prev();
+    }
+  };
 
   return (
     <section id="realisations">
@@ -184,7 +218,11 @@ function Carousel() {
         <div className="divider" />
         <p className="section-subtitle">Chaque pose est unique. Voici quelques-unes de nos créations — des regards transformés avec passion.</p>
       </div>
-      <div className="carousel-wrapper">
+      <div
+        className="carousel-wrapper"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="carousel-track" style={{ transform: `translateX(calc(-${offset}px))` }}>
           {PHOTOS.map((photo, i) => (
             <div key={i} className="carousel-item" onClick={() => setLightboxIdx(i)} style={{ cursor: 'zoom-in' }}>

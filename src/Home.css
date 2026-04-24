@@ -65,6 +65,28 @@
       padding: 9px 20px; border-radius: 2px; font-weight: 500 !important;
     }
     .nav-cta:hover { opacity: 0.85; }
+    .nav-burger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      z-index: 101;
+    }
+    .nav-burger span {
+      display: block;
+      width: 22px;
+      height: 1.5px;
+      background: var(--text);
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      transform-origin: center;
+    }
+    .nav-burger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+    .nav-burger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .nav-burger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 
     /* ── HERO (PARALLAX) ─────────────────────────── */
     .hero {
@@ -446,12 +468,39 @@
     /* ── RESPONSIVE ──────────────────────────────── */
     @media (max-width: 768px) {
       nav { padding: 0 20px; }
-      .nav-links { display: none; }
+      .nav-burger { display: flex; }
+      .nav-links {
+        display: none;
+        position: fixed;
+        top: 70px; left: 0; right: 0;
+        background: var(--nav-bg);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--hr);
+        flex-direction: column;
+        padding: 8px 0 16px;
+        z-index: 99;
+        list-style: none;
+        gap: 0;
+      }
+      .nav-links--open { display: flex; }
+      .nav-links li { border-bottom: 1px solid var(--hr); }
+      .nav-links li:last-child { border-bottom: none; margin-top: 8px; padding: 0 20px; }
+      .nav-links a {
+        display: block;
+        padding: 14px 24px;
+        font-size: 14px;
+      }
+      .nav-links li:last-child .nav-cta {
+        display: block;
+        text-align: center;
+        padding: 12px 24px;
+      }
       section { padding: 70px 20px; }
       .contact-grid { grid-template-columns: 1fr; gap: 40px; }
       .fidelite-inner { grid-template-columns: 1fr; gap: 40px; }
       .form-row { grid-template-columns: 1fr; }
       .carousel-item { flex: 0 0 260px; height: 340px; }
+      .carousel-wrapper { touch-action: pan-y; }
     }
 
     /* ── LIGHTBOX ────────────────────────────────── */
