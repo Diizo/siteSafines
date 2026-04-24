@@ -3,8 +3,8 @@ import './Home.css';
 
 // ── CAROUSEL PHOTOS (CSS gradient placeholders) ──────────
 const PHOTOS = [
-  { gradient: 'linear-gradient(135deg, #C8B090 0%, #A08060 40%, #7A5C48 100%)', label: 'Volume Russe' },
-  { gradient: 'linear-gradient(160deg, #D4BFA0 0%, #B89878 40%, #8A6850 100%)', label: 'Cil à Cil' },
+  { src: '/img/photo_test_1.jpg', label: 'Volume Russe' },
+  { src: '/img/photo_test_2.png', label: 'Cil à Cil' },
   { gradient: 'linear-gradient(120deg, #E0C8B0 0%, #C0987A 50%, #906850 100%)', label: 'Œil de Biche' },
   { gradient: 'linear-gradient(145deg, #C0A888 0%, #A0806A 40%, #705040 100%)', label: 'Pose Mixte' },
   { gradient: 'linear-gradient(130deg, #D8C0A0 0%, #B89070 50%, #886050 100%)', label: 'Œil de Poupée' },
@@ -34,7 +34,7 @@ function Nav() {
       transform: visible ? 'translateY(0)' : 'translateY(-100%)',
       transition: 'transform 0.35s ease, box-shadow 0.3s'
     }}>
-      <a className="nav-logo" href="#hero">Beauté <span>Signée</span></a>
+      <a className="nav-logo" href="#hero">Beauté <span>Signée S</span></a>
       <ul className="nav-links">
         <li><a href="#services">Services</a></li>
         <li><a href="#realisations">Réalisations</a></li>
@@ -81,7 +81,7 @@ function Hero() {
       </div>
       <div className="hero-content">
         <p className="hero-eyebrow">Safines Mouss — Marseille</p>
-        <h1 className="hero-title">Beauté<br/><em>Signée</em></h1>
+        <h1 className="hero-title">Beauté<br/><em>Signée S</em></h1>
         <p className="hero-tagline">Révélez votre regard, sublimez votre beauté.</p>
         <a className="hero-cta" href="#services">Découvrir les prestations</a>
       </div>
@@ -124,9 +124,49 @@ function Services() {
   );
 }
 
+// ── LIGHTBOX ──────────────────────────────────────────────
+function Lightbox({ photoIdx, onClose, onPrev, onNext }: {
+  photoIdx: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const photo = PHOTOS[photoIdx];
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') onPrev();
+      if (e.key === 'ArrowRight') onNext();
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose, onPrev, onNext]);
+
+  return (
+    <div className="lightbox-overlay" onClick={onClose}>
+      <button className="lightbox-close" onClick={onClose}>✕</button>
+      <button className="lightbox-nav lightbox-nav--prev" onClick={e => { e.stopPropagation(); onPrev(); }}>←</button>
+      <div className="lightbox-content" onClick={e => e.stopPropagation()}>
+        {'src' in photo
+          ? <img className="lightbox-img" src={photo.src} alt={photo.label} style={{ objectFit: 'cover' }} />
+          : <div className="lightbox-img" style={{ background: photo.gradient }} />
+        }
+        <div className="lightbox-label">{photo.label}</div>
+        <div className="lightbox-counter">{photoIdx + 1} / {PHOTOS.length}</div>
+      </div>
+      <button className="lightbox-nav lightbox-nav--next" onClick={e => { e.stopPropagation(); onNext(); }}>→</button>
+    </div>
+  );
+}
+
 // ── CAROUSEL ──────────────────────────────────────────────
 function Carousel() {
   const [idx, setIdx] = useState(0);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const total = PHOTOS.length;
   const visible = 3;
   const maxIdx = total - visible;
@@ -147,8 +187,11 @@ function Carousel() {
       <div className="carousel-wrapper">
         <div className="carousel-track" style={{ transform: `translateX(calc(-${offset}px))` }}>
           {PHOTOS.map((photo, i) => (
-            <div key={i} className="carousel-item">
-              <div className="ci-bg" style={{ background: photo.gradient }} />
+            <div key={i} className="carousel-item" onClick={() => setLightboxIdx(i)} style={{ cursor: 'zoom-in' }}>
+              {'src' in photo
+                ? <img className="ci-bg" src={photo.src} alt={photo.label} style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
+                : <div className="ci-bg" style={{ background: photo.gradient }} />
+              }
               <div className="ci-label">{photo.label}</div>
             </div>
           ))}
@@ -163,6 +206,14 @@ function Carousel() {
           ))}
         </div>
       </div>
+      {lightboxIdx !== null && (
+        <Lightbox
+          photoIdx={lightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+          onPrev={() => setLightboxIdx(i => (i! + total - 1) % total)}
+          onNext={() => setLightboxIdx(i => (i! + 1) % total)}
+        />
+      )}
     </section>
   );
 }
@@ -304,9 +355,31 @@ function Reglement() {
 }
 
 // ── CONTACT ───────────────────────────────────────────────
+const FORMSPREE_ID = 'REMPLACE_PAR_TON_ID'; // 👉 à remplacer après inscription sur formspree.io
+
 function Contact() {
   const [sent, setSent] = useState(false);
-  const handleSubmit = (e: { preventDefault(): void }) => { e.preventDefault(); setSent(true); };
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: { preventDefault(): void; currentTarget: HTMLFormElement }) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+        method: 'POST',
+        body: new FormData(e.currentTarget),
+        headers: { Accept: 'application/json' },
+      });
+      if (res.ok) setSent(true);
+      else setError(true);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <section id="contact">
       <div className="container">
@@ -330,7 +403,7 @@ function Contact() {
               </div>
             ))}
             <div className="social-links">
-              <a className="social-link" href="https://instagram.com" target="_blank" rel="noopener noreferrer" title="Instagram">
+              <a className="social-link" href="https://www.instagram.com/beaute.signee.s/" target="_blank" rel="noopener noreferrer" title="Instagram">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
                 </svg>
@@ -366,33 +439,40 @@ function Contact() {
                 <div className="form-row">
                   <div className="form-field">
                     <label className="form-label">Prénom</label>
-                    <input className="form-input" type="text" placeholder="Votre prénom" required />
+                    <input className="form-input" name="prenom" type="text" placeholder="Votre prénom" required />
                   </div>
                   <div className="form-field">
                     <label className="form-label">Nom</label>
-                    <input className="form-input" type="text" placeholder="Votre nom" required />
+                    <input className="form-input" name="nom" type="text" placeholder="Votre nom" required />
                   </div>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Email</label>
-                  <input className="form-input" type="email" placeholder="votre@email.com" required />
+                  <input className="form-input" name="email" type="email" placeholder="votre@email.com" required />
                 </div>
                 <div className="form-field">
                   <label className="form-label">Téléphone</label>
-                  <input className="form-input" type="tel" placeholder="06 XX XX XX XX" />
+                  <input className="form-input" name="telephone" type="tel" placeholder="06 XX XX XX XX" />
                 </div>
                 <div className="form-field">
                   <label className="form-label">Prestation souhaitée</label>
-                  <select className="form-input" defaultValue="">
+                  <select className="form-input" name="prestation" defaultValue="">
                     <option value="" disabled>Choisir une prestation</option>
                     {SERVICES.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
                   </select>
                 </div>
                 <div className="form-field">
                   <label className="form-label">Message</label>
-                  <textarea className="form-textarea" placeholder="Votre message ou question..." />
+                  <textarea className="form-textarea" name="message" placeholder="Votre message ou question..." />
                 </div>
-                <button className="form-submit" type="submit">Envoyer le message</button>
+                <button className="form-submit" type="submit" disabled={loading}>
+                  {loading ? 'Envoi en cours…' : 'Envoyer le message'}
+                </button>
+                {error && (
+                  <p style={{ marginTop: 12, fontSize: 13, color: '#c0392b' }}>
+                    Une erreur est survenue. Réessaie ou contacte-nous par téléphone.
+                  </p>
+                )}
               </form>
             )}
           </div>
